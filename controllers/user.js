@@ -1,5 +1,5 @@
-/** @type {import('mongoose').Model} */
 const bcrypt = require("bcrypt");
+/** @type {import('mongoose').Model} */
 const User = require("../model/User");
 
 /**
