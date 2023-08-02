@@ -8,6 +8,7 @@ const { register } = require("./controllers/user");
 const { auth } = require("./controllers/auth");
 const authorize = require("./middleware/authorize");
 const bodyParser = require("body-parser");
+const randomstring = require("randomstring");
 // const routes = require("./routes");
 const app = express();
 const CONNECTION_PORT =
@@ -85,24 +86,47 @@ app.get("/getcookie", (req, res) => {
   main().catch(console.error);
 });
 
-var transport = nodemailer.createTransport({
-  host: "sandbox.smtp.mailtrap.io",
-  port: 2525,
-  auth: {
-    user: "935ecc33087887",
-    pass: "c65da396544d93",
-  },
+const sendresetPasswordMail = async (req, res, token) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: {
+        user: "princetesting@010@gmail.com",
+        pass: "rznwibdetlinjiji",
+      },
+    });
+    const mailOptions = {
+      from: "princetesting@010@gmail.com",
+      to: email,
+      subject: "For Reset Password",
+      html:
+        "<p> Hii " +
+        name +
+        ',<a href="http://localhost:3000/reset-password' +
+        token +
+        '">Add reset your Password</a> </p>',
+    };
+    transporter.sendMail(mailOptions);
+  } catch (error) {}
+};
+
+app.post("/reset", async (req, res) => {
+  const email = req.body.email;
+  const userReset = await User.findOne({ email: email });
+  if (userReset) {
+    const randomString = randomstring.generate();
+    const data = await User.updateOne(
+      { email: email },
+      { $set: { token: randomString } }
+    );
+    sendresetPasswordMail(userReset.name, userReset.email, randomString);
+  } else {
+  }
 });
-transport
-  .sendMail({
-    from: '"Fred Foo 👻" <foo@example.com>', // sender address
-    to: "bar@example.com, baz@example.com", // list of receivers
-    subject: "Hello ✔", // Subject line
-    text: "Hello world?", // plain text body
-    html: "<b>Hello world?</b>", // html body
-  })
-  .then(console.log);
-app.post("/reset", function(req, res) {});
+
 app.listen(PORT, () => {
   console.log(`Server Running on port ${PORT}`);
 });
