@@ -3,6 +3,7 @@ var mongoose = require("mongoose");
 const User = require("./model/User");
 const nodemailer = require("nodemailer");
 const flash = require("connect-flash");
+var session = require("express-session");
 const cookieParser = require("cookie-parser");
 const restrictToLoggedinUserOnly = require("./middleware/auth");
 const { register } = require("./controllers/user");
@@ -12,6 +13,15 @@ const bodyParser = require("body-parser");
 const randomstring = require("randomstring");
 // const routes = require("./routes");
 const app = express();
+
+app.use(
+  session({
+    secret: "no-secret",
+    resave: true,
+    saveUninitialized: true,
+  })
+);
+app.use(flash());
 const CONNECTION_PORT =
   "mongodb+srv://princesuhagiya:1234@cluster0.z3axyxi.mongodb.net/blog_app?retryWrites=true&w=majority";
 const PORT = "3000";
@@ -37,8 +47,31 @@ app.use(express.json());
 //  Get Route Request
 
 app.get("/", restrictToLoggedinUserOnly, (req, res) => {
-  res.render("index");
+  res.render("reset");
 });
+
+app.post("/reset", async (req, res) => {
+  const token = req.query.token;
+  const user = await User.findOne({ token: token });
+  try {
+    if (user) {
+      const password = req.body.password;
+      const confirm_password = req.body.confirm_password;
+      if (password !== confirm_password) {
+        res
+          .status(200)
+          .send({ success: false, msg: "Password and Conform Password" });
+      }
+      const UserData = await User.updateOne({ password: password });
+      res.redirect("/login");
+    } else {
+      res
+        .status(200)
+        .send({ success: false, msg: "This Link has Been expire" });
+    }
+  } catch (error) {}
+});
+
 app.get("/registor", (req, res) => {
   res.render("registor");
 });
@@ -85,17 +118,16 @@ app.get("/getcookie", (req, res) => {
 
     console.log("Message sent: %s", info.messageId);
   }
-
   main().catch(console.error);
 });
 
+app.get("/reset", (req, res) => {
+  res.render("reset");
+});
 app.post("/forgot", async (req, res) => {
   const email = req.body.email;
-  console.log(email);
-
   // Record Find
   const userReset = await User.findOne({ email: email });
-
   if (userReset) {
     try {
       const randomString = randomstring.generate();
@@ -111,17 +143,17 @@ app.post("/forgot", async (req, res) => {
           pass: "c65da396544d93",
         },
       });
+
       const mailOptions = {
         from: "sender@email.com", // sender address
         to: "to@email.com", // list of receivers
         subject: "Subject of your email", // Subject line
-        html: `<h2>${email}</h2>`, // plain text body
+        html: `<h2> ${email} Please click to this Link and reset your password <a href="http://localhost:3000/reset?token=${randomString}" style="color:blue;">reset your password</a></h2>`, // plain text body
       };
       transporter.sendMail(mailOptions, function(err, info) {
         if (err) console.log(err);
         else console.log(info);
       });
-
       res.status(200).json({ message: "SesscuesFull" });
     } catch (error) {
       console.log(error);
