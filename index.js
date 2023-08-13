@@ -47,22 +47,30 @@ app.use(express.json());
 //  Get Route Request
 
 app.get("/", restrictToLoggedinUserOnly, (req, res) => {
-  res.render("reset");
+  res.render("index");
+});
+
+app.get("/reset", (req, res) => {
+  console.log(req.query.token);
+  const token = req.query.token;
+  res.render("reset", { token: token });
 });
 
 app.post("/reset", async (req, res) => {
-  const token = req.query.token;
-  const user = await User.findOne({ token: token });
+  const token = req.body.token;
+  const tokenData = await User.findOne({ token: token });
   try {
-    if (user) {
-      const password = req.body.password;
+    if (tokenData) {
+      const newPassword = req.body.password;
       const confirm_password = req.body.confirm_password;
-      if (password !== confirm_password) {
+      if (newPassword !== confirm_password) {
         res
           .status(200)
           .send({ success: false, msg: "Password and Conform Password" });
       }
-      const UserData = await User.updateOne({ password: password });
+      const UserData = await User.findByIdAndUpdate(tokenData._id, {
+        $set: { password: newPassword },
+      });
       res.redirect("/login");
     } else {
       res
@@ -121,9 +129,6 @@ app.get("/getcookie", (req, res) => {
   main().catch(console.error);
 });
 
-app.get("/reset", (req, res) => {
-  res.render("reset");
-});
 app.post("/forgot", async (req, res) => {
   const email = req.body.email;
   // Record Find
@@ -150,7 +155,7 @@ app.post("/forgot", async (req, res) => {
         subject: "Subject of your email", // Subject line
         html: `<h2> ${email} Please click to this Link and reset your password <a href="http://localhost:3000/reset?token=${randomString}" style="color:blue;">reset your password</a></h2>`, // plain text body
       };
-      transporter.sendMail(mailOptions, function(err, info) {
+      transporter.sendMail(mailOptions, function (err, info) {
         if (err) console.log(err);
         else console.log(info);
       });
